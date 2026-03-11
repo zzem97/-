@@ -738,12 +738,17 @@ export default function App() {
           <span className="text-[10px]">明细</span>
         </button>
         
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/30 -mt-10 border-4 border-background"
-        >
-          <Plus size={28} />
-        </button>
+        <div className="flex flex-col items-center -mt-10">
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-white shadow-lg shadow-primary/30 border-4 border-background"
+            aria-label="收支登记"
+            title="收支登记"
+          >
+            <Plus size={28} />
+          </button>
+          <span className="text-[10px] text-primary font-bold mt-1">记账</span>
+        </div>
 
         <button 
           onClick={() => setActiveTab('stats')}
@@ -925,7 +930,7 @@ export default function App() {
               className="bg-white w-full max-w-md rounded-t-[32px] p-6 pb-10 space-y-6"
             >
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-bold">{editingTransaction ? '修改记录' : '新增记录'}</h2>
+                <h2 className="text-lg font-bold">{editingTransaction ? '修改记录' : '收支登记'}</h2>
                 <div className="flex bg-gray-100 p-1 rounded-xl">
                   <button 
                     onClick={() => setFormType('expense')}
