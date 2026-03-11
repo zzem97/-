@@ -65,8 +65,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchCategories();
     if (currentLedger) {
+      localStorage.setItem('lastLedgerId', currentLedger.id.toString());
+      fetchCategories();
       fetchTransactions();
     }
   }, [currentLedger]);
@@ -75,7 +76,17 @@ export default function App() {
     const res = await fetch('/api/ledgers');
     const data = await res.json();
     setLedgers(data);
+    
     if (data.length > 0 && !currentLedger) {
+      const lastId = localStorage.getItem('lastLedgerId');
+      if (lastId) {
+        const savedLedger = data.find((l: Ledger) => l.id.toString() === lastId);
+        if (savedLedger) {
+          setCurrentLedger(savedLedger);
+          return;
+        }
+      }
+      
       const pocketLedger = data.find((l: Ledger) => l.name === '小金库');
       setCurrentLedger(pocketLedger || data[0]);
     }
@@ -858,12 +869,14 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6"
+            onClick={() => setShowLedgerModal(false)}
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white w-full max-w-sm rounded-3xl p-6 space-y-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">新增账本</h2>
@@ -921,69 +934,71 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center"
+            className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAddModal(false)}
           >
             <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className="bg-white w-full max-w-md rounded-t-[32px] p-6 pb-10 space-y-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-sm rounded-[32px] p-6 space-y-4 shadow-2xl overflow-y-auto max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-bold">{editingTransaction ? '修改记录' : '收支登记'}</h2>
                 <div className="flex bg-gray-100 p-1 rounded-xl">
                   <button 
                     onClick={() => setFormType('expense')}
-                    className={cn("px-6 py-1.5 rounded-lg text-sm font-medium transition-all", formType === 'expense' ? "bg-white shadow-sm" : "text-gray-500")}
+                    className={cn("px-4 py-1 rounded-lg text-xs font-medium transition-all", formType === 'expense' ? "bg-white shadow-sm" : "text-gray-500")}
                   >支出</button>
                   <button 
                     onClick={() => setFormType('income')}
-                    className={cn("px-6 py-1.5 rounded-lg text-sm font-medium transition-all", formType === 'income' ? "bg-white shadow-sm" : "text-gray-500")}
+                    className={cn("px-4 py-1 rounded-lg text-xs font-medium transition-all", formType === 'income' ? "bg-white shadow-sm" : "text-gray-500")}
                   >收入</button>
                 </div>
-                <button onClick={() => setShowAddModal(false)} className="p-2 text-gray-400"><X size={24} /></button>
+                <button onClick={() => setShowAddModal(false)} className="p-2 text-gray-400"><X size={20} /></button>
               </div>
 
-              <div className="flex items-baseline gap-1 border-b-2 border-primary/20 pb-2">
-                <span className="text-2xl font-bold text-primary">¥</span>
+              <div className="flex items-baseline gap-1 border-b-2 border-primary/20 pb-1">
+                <span className="text-xl font-bold text-primary">¥</span>
                 <input 
                   type="number" 
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className="text-4xl font-bold w-full outline-none placeholder:text-gray-200"
+                  className="text-3xl font-bold w-full outline-none placeholder:text-gray-200"
                   autoFocus
                 />
               </div>
 
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-4 gap-3">
                 {categories.filter(c => c.type === formType).map(c => (
                   <button 
                     key={c.id}
                     onClick={() => setSelectedCategory(c)}
                     className={cn(
-                      "flex flex-col items-center gap-2 p-2 rounded-2xl transition-all active:scale-95",
-                      selectedCategory?.id === c.id ? "bg-primary/10 text-primary scale-105" : "text-gray-500 hover:bg-gray-50"
+                      "flex flex-col items-center gap-1.5 p-1.5 rounded-2xl transition-all active:scale-95",
+                      selectedCategory?.id === c.id ? "bg-primary/10 text-primary" : "text-gray-500 hover:bg-gray-50"
                     )}
                   >
                     <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center pointer-events-none",
+                      "w-10 h-10 rounded-full flex items-center justify-center pointer-events-none",
                       selectedCategory?.id === c.id ? "bg-primary text-white" : "bg-gray-50"
                     )}>
-                      {ICON_MAP[c.icon] && React.createElement(ICON_MAP[c.icon], { size: 24 })}
+                      {ICON_MAP[c.icon] && React.createElement(ICON_MAP[c.icon], { size: 20 })}
                     </div>
-                    <span className="text-xs pointer-events-none">{c.name}</span>
+                    <span className="text-[10px] font-medium pointer-events-none">{c.name}</span>
                   </button>
                 ))}
                 {isAddingCategory ? (
-                  <div className="col-span-2 flex flex-col gap-2 p-2 bg-gray-50 rounded-2xl">
+                  <div className="col-span-2 flex flex-col gap-1.5 p-1.5 bg-gray-50 rounded-2xl">
                     <input
                       type="text"
                       autoFocus
-                      placeholder="分类名称 (8字内)"
+                      placeholder="分类名称"
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value.substring(0, 8))}
-                      className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                      className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/20"
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter') {
                           const name = newCategoryName.trim();
@@ -1005,7 +1020,7 @@ export default function App() {
                         }
                       }}
                     />
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                       <button 
                         onClick={async () => {
                           const name = newCategoryName.trim();
@@ -1022,53 +1037,53 @@ export default function App() {
                             setNewCategoryName('');
                           }
                         }}
-                        className="flex-1 bg-primary text-white text-[10px] py-1.5 rounded-lg font-medium"
+                        className="flex-1 bg-primary text-white text-[9px] py-1 rounded-lg font-medium"
                       >确定</button>
                       <button 
                         onClick={() => {
                           setIsAddingCategory(false);
                           setNewCategoryName('');
                         }}
-                        className="flex-1 bg-gray-200 text-gray-600 text-[10px] py-1.5 rounded-lg font-medium"
+                        className="flex-1 bg-gray-200 text-gray-600 text-[9px] py-1 rounded-lg font-medium"
                       >取消</button>
                     </div>
                   </div>
                 ) : (
                   <button 
                     onClick={() => setIsAddingCategory(true)}
-                    className="flex flex-col items-center gap-2 p-2 rounded-2xl text-gray-400 hover:bg-gray-50 transition-all active:scale-95"
+                    className="flex flex-col items-center gap-1.5 p-1.5 rounded-2xl text-gray-400 hover:bg-gray-50 transition-all active:scale-95"
                   >
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center pointer-events-none">
-                      <Plus size={20} />
+                    <div className="w-10 h-10 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center pointer-events-none">
+                      <Plus size={18} />
                     </div>
-                    <span className="text-xs pointer-events-none">添加分类</span>
+                    <span className="text-[10px] font-medium pointer-events-none">添加分类</span>
                   </button>
                 )}
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl">
-                  <CalendarIcon size={18} className="text-gray-400" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl">
+                  <CalendarIcon size={16} className="text-gray-400" />
                   <input 
                     type="date" 
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="bg-transparent text-sm outline-none flex-1"
+                    className="bg-transparent text-xs outline-none flex-1"
                   />
                 </div>
-                <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl">
-                  <PlusCircle size={18} className="text-gray-400" />
+                <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl">
+                  <PlusCircle size={16} className="text-gray-400" />
                   <input 
                     type="text" 
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="添加备注..."
-                    className="bg-transparent text-sm outline-none flex-1"
+                    className="bg-transparent text-xs outline-none flex-1"
                   />
                 </div>
               </div>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2 pt-1">
                 <button 
                   onClick={() => handleAddTransaction({
                     amount: parseFloat(amount),
@@ -1078,13 +1093,13 @@ export default function App() {
                     date
                   })}
                   disabled={!amount}
-                  className="w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-primary/30 disabled:opacity-50 disabled:shadow-none"
+                  className="w-full bg-primary text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-primary/30 disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98]"
                 >
                   {editingTransaction ? '确认修改' : '保存记录'}
                 </button>
                 <button 
                   onClick={() => setShowAddModal(false)}
-                  className="w-full text-gray-400 py-2 rounded-2xl font-medium text-sm transition-all active:scale-[0.98] hover:text-gray-600"
+                  className="w-full text-gray-400 py-1 rounded-2xl font-medium text-xs transition-all active:scale-[0.98] hover:text-gray-600"
                 >
                   返回
                 </button>

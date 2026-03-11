@@ -5,7 +5,6 @@ import path from 'path';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import { fileURLToPath } from 'url';
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -149,7 +148,7 @@ fixLedgerCategories('日常记账', [
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = 3000;
 
   app.use(express.json());
 
@@ -281,36 +280,17 @@ async function startServer() {
   });
 
   app.get('/api/export', async (req, res) => {
-    const { ledger_id, period } = req.query;
+    const { ledger_id } = req.query;
     const ledger = db.prepare('SELECT name FROM ledgers WHERE id = ?').get(ledger_id) as { name: string };
-    
-    let query = `
+    const transactions = db.prepare(`
       SELECT t.date, 
              COALESCE(c.name, CASE WHEN t.note IS NOT NULL AND t.note != '' THEN t.note ELSE (CASE WHEN t.type = 'income' THEN '常规收入' ELSE '常规支出' END) END) as category,
              t.type, t.amount, t.note 
       FROM transactions t 
       LEFT JOIN categories c ON t.category_id = c.id 
       WHERE t.ledger_id = ?
-    `;
-    
-    const params: any[] = [ledger_id];
-    const now = new Date();
-    
-    if (period === 'month') {
-      const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
-      const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
-      query += ` AND t.date BETWEEN ? AND ?`;
-      params.push(monthStart, monthEnd);
-    } else if (period === 'year') {
-      const yearStart = format(startOfYear(now), 'yyyy-MM-dd');
-      const yearEnd = format(endOfYear(now), 'yyyy-MM-dd');
-      query += ` AND t.date BETWEEN ? AND ?`;
-      params.push(yearStart, yearEnd);
-    }
-    
-    query += ` ORDER BY t.date DESC`;
-    
-    const transactions = db.prepare(query).all(...params) as any[];
+      ORDER BY t.date DESC
+    `).all(ledger_id) as any[];
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('账单明细');
@@ -374,6 +354,9 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static('dist'));
+    app.get('*', (req, res) => {
+      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+    });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
